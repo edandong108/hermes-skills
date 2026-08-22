@@ -1,6 +1,6 @@
 ---
 name: project-xray
-description: "Use when onboarding or refactoring an unfamiliar codebase."
+description: "Use when 接手/改造/重构陌生或老项目代码库，先透视再动手。"
 version: 0.5.0
 author: Hermes Agent + lidon
 license: MIT
