@@ -28,28 +28,28 @@ import pymupdf
 KB_ROOT    = r"C:\code\kb"
 CAPTIONS   = "captions.jsonl"
 META       = "meta.json"
-GEN_EP     = "https://open.bigmodel.cn/api/paas/v4"
-VLM_MODEL  = "glm-4v-flash"                      # 免费;4v-plus 等按量计费
-ENV_FALLBACK = None  # 不内置任何机器路径;用环境变量 GLM_API_KEY 或 --env-file 指定
+GEN_EP     = "https://open.bigmodel.cn/api/paas/v4"   # 默认智谱;换厂商用 --vlm-endpoint
+VLM_MODEL  = "glm-4v-flash"                      # 免费视觉模型;换厂商用 --vlm-model(须支持图片)
+ENV_FALLBACK = None  # 不内置任何机器路径;用环境变量 VLM_API_KEY/GLM_API_KEY 或 --env-file 指定
 PORT       = 8377
 MIN_W, MIN_H, MAX_SIDE = 250, 150, 1800          # 过滤小图标 / caption 压边
 SUSPICIOUS = ["无法确定", "无法辨认", "看不清", "不清楚", "可能是", "疑似"]
 
 def load_key(env_file=None):
-    k = os.environ.get("GLM_API_KEY")
+    k = os.environ.get("VLM_API_KEY") or os.environ.get("GLM_API_KEY")
     if k: return k
     path = env_file or ENV_FALLBACK
     if not path:
-        print("[x] 缺 GLM_API_KEY:请设环境变量,或 --env-file 指向含它的 .env")
+        print("[x] 缺 API key:设环境变量 VLM_API_KEY(或 GLM_API_KEY),或 --env-file 指向含它的 .env")
         return None
     try:
         for line in open(path, encoding="utf-8"):
             line = line.strip()
-            if line and not line.startswith("#") and line.startswith("GLM_API_KEY="):
+            if line and not line.startswith("#") and (line.startswith("VLM_API_KEY=") or line.startswith("GLM_API_KEY=")):
                 return line.split("=", 1)[1]
     except FileNotFoundError:
         pass
-    print(f"[x] 缺 GLM_API_KEY:请设环境变量,或 --env-file 指向含它的 .env(当前尝试:{path})")
+    print(f"[x] 缺 API key:{path} 里没有 VLM_API_KEY/GLM_API_KEY")
     return None
 
 def doc_dir(kb_root, doc_id):
@@ -91,7 +91,7 @@ def load_cache(d):
             except Exception: pass
     return cache
 
-def caption_one(fn, pno, page_ctx, doc_name, img_dir, key):
+def caption_one(fn, pno, page_ctx, doc_name, img_dir, key, endpoint, model):
     pix = pymupdf.Pixmap(os.path.join(img_dir, fn))
     if pix.n - pix.alpha > 3: pix = pymupdf.Pixmap(pymupdf.csRGB, pix)
     side = max(pix.width, pix.height)
@@ -103,11 +103,11 @@ def caption_one(fn, pno, page_ctx, doc_name, img_dir, key):
     prompt = (f"这是《{doc_name}》第{pno}页的插图。该页正文片段:「{ctx}」。"
               "请用3-6句话说明这张图:若是产品界面截图,说明在哪个菜单/页面、界面上的关键字段按钮选项、"
               "用户这步做什么;若是流程图,按顺序列出关键节点;若是表格,概括表头和用途。不要复述正文。")
-    payload = {"model": VLM_MODEL, "messages": [{"role": "user", "content": [
+    payload = {"model": model, "messages": [{"role": "user", "content": [
         {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{b64}"}},
         {"type": "text", "text": prompt}]}], "max_tokens": 400, "temperature": 0.2}
     for attempt in range(3):
-        req = urllib.request.Request(GEN_EP + "/chat/completions",
+        req = urllib.request.Request(endpoint.rstrip("/") + "/chat/completions",
             json.dumps(payload).encode(),
             {"Authorization": f"Bearer {key}", "Content-Type": "application/json"})
         try:
@@ -209,7 +209,9 @@ def main():
     ap.add_argument("--rebuild-md", action="store_true", help="只重组 md,不调 API(PDF路径读 meta.json)")
     ap.add_argument("--check", action="store_true", help="图说质量预扫")
     ap.add_argument("--doctor", action="store_true", help="整套资产健康自检")
-    ap.add_argument("--env-file", default=None, help="GLM_API_KEY 所在 .env(默认 环境变量>%s)" % ENV_FALLBACK)
+    ap.add_argument("--env-file", default=None, help="API key 所在 .env(含 VLM_API_KEY 或 GLM_API_KEY=...)")
+    ap.add_argument("--vlm-endpoint", default=GEN_EP, help=f"OpenAI 兼容视觉端点(默认智谱 {GEN_EP})")
+    ap.add_argument("--vlm-model", default=VLM_MODEL, help=f"视觉模型名,须支持图片输入(默认 {VLM_MODEL};如 qwen-vl-plus/deepseek-vl 等)")
     args = ap.parse_args()
 
     if args.doctor: return doctor(args.kb_root, args.env_file)
@@ -242,7 +244,7 @@ def main():
         page_text = {p+1: doc[p].get_text("text").strip() for p in range(doc.page_count)}
         with ThreadPoolExecutor(max_workers=4) as ex:
             for res in ex.map(lambda t: caption_one(t[0], t[1], page_text.get(t[1], ""), doc_name,
-                                                    os.path.join(d, "images"), key), todo):
+                                                    os.path.join(d, "images"), key, args.vlm_endpoint, args.vlm_model), todo):
                 cache[res["file"]] = res
                 with open(os.path.join(d, CAPTIONS), "a", encoding="utf-8") as f:
                     f.write(json.dumps(res, ensure_ascii=False) + "\n")

@@ -9,7 +9,7 @@
 ## 步骤
 1. 复制 <KB_ROOT> 到对方机器(路径必须纯 ASCII,服务根=知识库根)
 2. 装 Python 3.10+,`pip install pymupdf`
-3. 配置 GLM_API_KEY:环境变量,或验收时 `python build_kb.py --doctor --env-file <对方.env>`(**通用端点** key,coding 套餐 key 拒图,错误1210)
+3. 配置 API key:环境变量 `VLM_API_KEY`(或旧 `GLM_API_KEY`),或验收时 `python build_kb.py --doctor --env-file <对方.env>`。默认智谱通用端点+glm-4v-flash(免费);换任意 OpenAI 兼容厂商加 `--vlm-endpoint`/`--vlm-model`(模型必须支持图片输入——key 对但端点拒图,就是当初 coding 套餐报 1210 的教训)
 4. 写 kbserve.vbs 放入 `shell:startup`(Win+R 输 shell:startup)。模板=本机 `C:\Users\<user>\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup\kbserve.vbs`,改两处:python 绝对路径(对方任意存在的 python.exe)、--directory <KB_ROOT>。自带 8377 端口探测防重复
 5. 双击 vbs 一次立即拉起(不等重启),然后跑下方验收
 
@@ -33,6 +33,6 @@
 | 群窗图挂了显示裂图 | 8377 没跑(重启后 vbs 未生效/python路径错) | `--doctor` 定位→看 vbs 两处路径→手动拉起 |
 | URL 404 | 旧布局无 doc-id 段,或 doc-id 拼错 | 核对 `http://127.0.0.1:8377/<doc-id>/images/xx.png` |
 | vbs 双击无反应 | python 路径不存在,脚本静默退出 | 核对 vbs 内 py 变量 |
-| 图说生成报 1210 | 用了 coding 套餐端点/key | 换通用端点 glm-4v-flash |
+| 图说生成报 1210 | 模型/端点不支持图片输入(如 coding 套餐端点) | 默认走智谱通用端点 glm-4v-flash;换厂商确认视觉模型+--vlm-endpoint |
 | 手机上看不了 127.0.0.1 图 | loopback 只对本机有效 | 改发 MEDIA: 卡片+文字路径 |
-| --doctor 报 key 无效 | --env-file 未指向含 GLM_API_KEY 的 .env | 确认环境变量或 --env-file 路径 |
+| --doctor 报 key 无效 | --env-file 未指向含 VLM_API_KEY/GLM_API_KEY 的 .env | 确认环境变量或 --env-file 路径 |

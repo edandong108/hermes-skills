@@ -1,7 +1,7 @@
 ---
 name: pdf-kb-qa
 description: "Use when 问操作手册/图文PDF知识库问答(结合图示解答)或新手册入库/改版刷新"
-version: 0.3.0
+version: 0.4.0
 author: shujujiaohuan
 license: MIT
 ---
@@ -23,9 +23,10 @@ license: MIT
 ## 快速开始
 ```bash
 pip install pymupdf                      # 唯一依赖
-export GLM_API_KEY=xxx                   # 智谱通用端点 key(免费 glm-4v-flash)
+export VLM_API_KEY=xxx                   # 任意 OpenAI 兼容视觉模型 key(默认智谱免费 glm-4v-flash)
 python scripts/build_kb.py "手册.pdf" --doc-id my-doc --name 显示名   # 入库
 python scripts/build_kb.py --doctor      # 健康自检(服务/key/逐文档资产)
+# 换厂商: --vlm-endpoint https://dashscope.aliyuncs.com/compatible-mode/v1 --vlm-model qwen-vl-plus
 ```
 
 ## 新手册入库流程
@@ -51,7 +52,7 @@ python scripts/build_kb.py --doctor      # 健康自检(服务/key/逐文档资�
 ## 运行态约定(每台机器自己的,不进仓)
 - `<KB_ROOT>`(默认 `C:\code\kb`,可 `--kb-root` 改):既是知识库根也是图片服务根,必须纯 ASCII
 - kbserve.vbs 开机自启:模板在 `assets/kbserve.vbs`,改两处(python 绝对路径、--directory)后放 `shell:startup`
-- GLM_API_KEY:环境变量或 `--env-file <你的.env>`(**通用端点**;coding 套餐端点拒收图片,错误1210)
+- API key:环境变量 `VLM_API_KEY`(或旧 `GLM_API_KEY`)或 `--env-file <你的.env>`;默认智谱通用端点+glm-4v-flash(coding 套餐端点拒收图片,错误1210);换厂商 `--vlm-endpoint`/`--vlm-model`(模型须支持图片输入)
 
 ## 常见坑
 1. 群聊窗把 `::preview{...}` 当纯文本转义——群窗禁用该指令,走 8377 URL。
@@ -61,6 +62,7 @@ python scripts/build_kb.py --doctor      # 健康自检(服务/key/逐文档资�
 5. 改脚本先改本仓再拷出部署,别两头各改各的;本机部署副本里的个人 key 回退属于配置边界,不算漂移。
 
 ## 迭代记录
+- 0.4.0 多厂商:--vlm-endpoint/--vlm-model 切换任意 OpenAI 兼容视觉端点(阿里 qwen-vl-plus 等);key 放宽为 VLM_API_KEY(兼容 GLM_API_KEY);硬要求=模型支持图片输入。
 - 0.3.0 流水线 v2:多文档并存+meta.json,URL 带 doc-id 段;由 picc-manual-qa 泛化更名;发布版清洗(脚本去机器路径,vbs 模板入 assets)。
 - 0.2.0 --doctor/--env-file;md 页标改 `<!-- page:N -->` 注释锚点。
 - 0.1.0 初版 picc-manual-qa,单手册,通路矩阵实测定版。
