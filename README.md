@@ -26,6 +26,14 @@
 - 三重质量护栏：需求载荷检查（没需求不脑补）→ PRD 质量审查（blocking/warning/info 分级）→ 缺失不编造（标 `[待确认]`）
 - 核心链路识别：P0/P1 聚焦核心业务链路，边角功能降级，避免几百条平铺
 
+### 3. `pdf-kb-qa` — 图文 PDF 知识库问答
+
+把图文型 PDF（操作手册/用户指南）构建成 agent 可问答的图文知识库：pymupdf 抽截图 → 免费视觉模型（glm-4v-flash 通用端点）写图说 → 图文交错 md（小到可整读，不用向量库）→ 本机图片服务按聊天窗类型出图。
+
+- 多文档并存：`--doc-id` 一条命令入库新手册（驾驶舱填报、客户系统手册均可）
+- 运维闭环：`--doctor` 健康自检 / `--check` 可疑图说预扫 / `--rebuild-md` 零成本重组 / captions 缓存不重复调 API
+- 换机部署：`references/deploy.md` 五步+验收；`assets/kbserve.vbs` 自启模板
+
 ## 安装使用
 
 ### Hermes Agent
